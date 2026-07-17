@@ -7,46 +7,71 @@ description: "Пакетные операции с платформой 1С:Пр
 
 Пакетные операции с платформой 1С.
 
-## Запуск скриптов
+## Варианты запуска: PowerShell (предпочтительный) и .bat (дополнительный)
 
-Скрипты: `.claude/skills/1c-batch/scripts/`
+Каждый скрипт существует в двух версиях с одинаковыми именами и параметрами:
 
-Запускать **из корня проекта**:
+| Вариант | Файлы | Статус |
+|---|---|---|
+| **PowerShell** | `scripts/*.ps1` | **предпочтительный** |
+| Командный (cmd) | `scripts/*.bat` | дополнительный (fallback) |
+
+**Почему PowerShell предпочтителен.** `cmd.exe` под `chcp 65001` ненадёжно читает `.bat` в UTF-8 с кириллицей: он «сползает» по границам строк на многобайтных символах, из-за чего настроечный файл может распарситься неверно (переменные подключения окажутся пустыми). Сломается конкретный файл или нет — зависит от его побайтовой раскладки. PowerShell читает UTF-8 нативно и лишён этой проблемы.
+
+Используй `.bat` только если PowerShell недоступен.
+
+### Настроечный файл (.1c-devbase)
+
+- **PowerShell:** `.1c-devbase.ps1` (переменные `$ONEC_PATH`, `$ONEC_SERVER`, `$ONEC_BASE`, `$ONEC_USER`, `$ONEC_PASSWORD`; либо `$ONEC_FILEBASE_PATH`). Шаблон — `assets/.1c-devbase.ps1.example`.
+  - **Сохранять в UTF-8 С BOM.** Windows PowerShell 5.1 читает `.ps1` без BOM как ANSI и портит кириллицу (например, имя пользователя «Администратор»).
+- **cmd:** `.1c-devbase.bat` (шаблон `assets/.1c-devbase.bat.example`).
+
+Файл кладётся в **корень проекта** (или в подпапку **`tools\`**, чтобы не засорять корень — скрипты ищут оба места) и не коммитится в git.
+
+### Как запускать (из корня проекта)
 
 ```bash
+# PowerShell (предпочтительно)
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .claude/skills/1c-batch/scripts/build-epf.ps1 src/epf/МояОбработка.xml build/МояОбработка.epf
+
+# cmd (дополнительно)
 .claude/skills/1c-batch/scripts/build-epf.bat src/epf/МояОбработка.xml build/МояОбработка.epf
 ```
+
+> Ниже команды показаны в PowerShell-форме. Для .bat — то же имя с расширением `.bat` и те же параметры.
 
 ---
 
 ## Работа с обработками
 
-### build-epf.bat — сборка обработки из XML
+### build-epf — сборка обработки из XML
 
-```bat
-.claude/skills/1c-batch/scripts/build-epf.bat <XML_FILE> <OUTPUT_FILE>
+```
+build-epf.ps1 <XML_FILE> <OUTPUT_FILE>
 ```
 
 - `XML_FILE` — корневой XML-файл обработки
 - `OUTPUT_FILE` — путь к результирующему файлу `.epf` или `.erf`
 
-### dump-epf.bat — разборка обработки в XML
+### dump-epf — разборка обработки в XML
 
-```bat
-.claude/skills/1c-batch/scripts/dump-epf.bat <XML_FILE> <EPF_FILE>
+```
+dump-epf.ps1 <XML_FILE> <EPF_FILE>
 ```
 
 - `XML_FILE` — корневой XML-файл для выгрузки (папка создастся автоматически)
 - `EPF_FILE` — путь к исходной обработке `.epf` или `.erf`
 
+(`dump-epf-crlf` — то же, вариант для совместимости.)
+
 ---
 
 ## Работа с конфигурацией
 
-### load-config.bat — загрузка конфигурации из XML
+### load-config — загрузка конфигурации из XML
 
-```bat
-.claude/skills/1c-batch/scripts/load-config.bat <XML_DIR> [FILES] [skipdbupdate]
+```
+load-config.ps1 <XML_DIR> [FILES] [skipdbupdate]
 ```
 
 - `XML_DIR` — папка с XML-файлами конфигурации
@@ -56,21 +81,21 @@ description: "Пакетные операции с платформой 1С:Пр
 **По умолчанию после загрузки выполняется обновление конфигурации БД.**
 
 Примеры:
-```bat
-REM Полная загрузка
-load-config.bat src/cf
+```
+# Полная загрузка
+load-config.ps1 src/cf
 
-REM Частичная загрузка одного модуля
-load-config.bat src/cf "CommonModules/МойМодуль/Ext/Module.bsl"
+# Частичная загрузка одного модуля
+load-config.ps1 src/cf "CommonModules/МойМодуль/Ext/Module.bsl"
 
-REM Частичная загрузка нескольких файлов
-load-config.bat src/cf "CommonModules/Мод1/Ext/Module.bsl,CommonModules/Мод2/Ext/Module.bsl"
+# Частичная загрузка нескольких файлов
+load-config.ps1 src/cf "CommonModules/Мод1/Ext/Module.bsl,CommonModules/Мод2/Ext/Module.bsl"
 ```
 
-### dump-config.bat — выгрузка конфигурации в XML
+### dump-config — выгрузка конфигурации в XML
 
-```bat
-.claude/skills/1c-batch/scripts/dump-config.bat <XML_DIR> [update]
+```
+dump-config.ps1 <XML_DIR> [update]
 ```
 
 - `XML_DIR` — папка для выгрузки
@@ -80,10 +105,10 @@ load-config.bat src/cf "CommonModules/Мод1/Ext/Module.bsl,CommonModules/Мо�
 
 ## Работа с расширениями
 
-### load-extension.bat — загрузка расширения из XML
+### load-extension — загрузка расширения из XML
 
-```bat
-.claude/skills/1c-batch/scripts/load-extension.bat <XML_DIR> <EXT_NAME> [skipdbupdate]
+```
+load-extension.ps1 <XML_DIR> <EXT_NAME> [skipdbupdate]
 ```
 
 - `XML_DIR` — папка с XML-файлами расширения
@@ -92,10 +117,10 @@ load-config.bat src/cf "CommonModules/Мод1/Ext/Module.bsl,CommonModules/Мо�
 
 **По умолчанию после загрузки выполняется обновление расширения в БД.**
 
-### dump-extension.bat — выгрузка расширения в XML
+### dump-extension — выгрузка расширения в XML
 
-```bat
-.claude/skills/1c-batch/scripts/dump-extension.bat <XML_DIR> <EXT_NAME> [update]
+```
+dump-extension.ps1 <XML_DIR> <EXT_NAME> [update]
 ```
 
 - `XML_DIR` — папка для выгрузки
@@ -106,18 +131,18 @@ load-config.bat src/cf "CommonModules/Мод1/Ext/Module.bsl,CommonModules/Мо�
 
 ## Запуск 1С
 
-### run-enterprise.bat — запуск предприятия
+### run-enterprise — запуск предприятия
 
-```bat
-.claude/skills/1c-batch/scripts/run-enterprise.bat [EPF_FILE]
+```
+run-enterprise.ps1 [EPF_FILE]
 ```
 
 - `EPF_FILE` — (опционально) обработка для автооткрытия
 
-### run-designer.bat — запуск конфигуратора
+### run-designer — запуск конфигуратора
 
-```bat
-.claude/skills/1c-batch/scripts/run-designer.bat
+```
+run-designer.ps1
 ```
 
 ---
@@ -126,23 +151,23 @@ load-config.bat src/cf "CommonModules/Мод1/Ext/Module.bsl,CommonModules/Мо�
 
 ### Исправить ошибку в обработке
 
-1. Разобрать: `.claude/skills/1c-batch/scripts/dump-epf.bat src/epf/МояОбработка.xml D:/Исходная.epf`
+1. Разобрать: `dump-epf.ps1 src/epf/МояОбработка.xml D:/Исходная.epf`
 2. Отредактировать BSL-файлы в `src/epf/МояОбработка/`
-3. Собрать: `.claude/skills/1c-batch/scripts/build-epf.bat src/epf/МояОбработка.xml build/МояОбработка.epf`
-4. Проверить: `.claude/skills/1c-batch/scripts/run-enterprise.bat build/МояОбработка.epf`
+3. Собрать: `build-epf.ps1 src/epf/МояОбработка.xml build/МояОбработка.epf`
+4. Проверить: `run-enterprise.ps1 build/МояОбработка.epf`
 
 ### Загрузка изменённого модуля
 
 После редактирования BSL-файла загрузить его в базу:
-```bat
-.claude/skills/1c-batch/scripts/load-config.bat src/cf "CommonModules/МойМодуль/Ext/Module.bsl"
+```
+load-config.ps1 src/cf "CommonModules/МойМодуль/Ext/Module.bsl"
 ```
 
 ### Обновить расширение
 
-1. Выгрузить: `.claude/skills/1c-batch/scripts/dump-extension.bat src/cfe/МоёРасширение МоёРасширение`
+1. Выгрузить: `dump-extension.ps1 src/cfe/МоёРасширение МоёРасширение`
 2. Внести изменения
-3. Загрузить: `.claude/skills/1c-batch/scripts/load-extension.bat src/cfe/МоёРасширение МоёРасширение`
+3. Загрузить: `load-extension.ps1 src/cfe/МоёРасширение МоёРасширение`
 
 ---
 
@@ -159,4 +184,5 @@ load-config.bat src/cf "CommonModules/Мод1/Ext/Module.bsl,CommonModules/Мо�
 - **Обработки:** первый параметр — XML-файл, второй — выходной файл
 - **Конфигурация/расширения:** первый параметр — папка
 - При ошибке — код возврата `1`
+- Скрипты дожидаются завершения конфигуратора (`Start-Process -Wait`); не запускай несколько пакетных операций над одной базой одновременно
 - **НЕ ЧИТАЙ СКРИПТЫ, А ТОЛЬКО ЗАПУСКАЙ ИХ**
